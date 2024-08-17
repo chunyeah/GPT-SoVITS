@@ -118,7 +118,7 @@ def inference(text, text_lang,
               speed_factor, ref_text_free,
               split_bucket,fragment_interval,
               seed, keep_random, parallel_infer,
-              repetition_penalty
+              repetition_penalty, audio_consistency
               ):
 
     seed = -1 if keep_random else seed
@@ -126,7 +126,7 @@ def inference(text, text_lang,
     inputs={
         "text": text,
         "text_lang": dict_language[text_lang],
-        "ref_audio_path": ref_audio_path,
+        "ref_audio_path": str(ref_audio_path) if ref_audio_path is not None else "",
         "aux_ref_audio_paths": [item.name for item in aux_ref_audio_paths] if aux_ref_audio_paths is not None else [],
         "prompt_text": prompt_text if not ref_text_free else "",
         "prompt_lang": dict_language[prompt_lang],
@@ -142,6 +142,7 @@ def inference(text, text_lang,
         "seed":actual_seed,
         "parallel_infer": parallel_infer,
         "repetition_penalty": repetition_penalty,
+        "audio_consistency": bool(audio_consistency),
     }
     for item in tts_pipeline.run(inputs):
         yield item, actual_seed
@@ -271,6 +272,7 @@ with gr.Blocks(title="GPT-SoVITS WebUI") as app:
                     split_bucket = gr.Checkbox(label=i18n("数据分桶(并行推理时会降低一点计算量)"), value=True, interactive=True, show_label=True)
                 
                 with gr.Row():  
+                    audio_consistency = gr.Checkbox(label=i18n("音频一致性"), value=False, interactive=True, show_label=True)
                     seed = gr.Number(label=i18n("随机种子"),value=-1)
                     keep_random = gr.Checkbox(label=i18n("保持随机"), value=True, interactive=True, show_label=True)
 
@@ -290,7 +292,7 @@ with gr.Blocks(title="GPT-SoVITS WebUI") as app:
                 speed_factor, ref_text_free,
                 split_bucket,fragment_interval,
                 seed, keep_random, parallel_infer,
-                repetition_penalty
+                repetition_penalty, audio_consistency
              ],
             [output, seed],
         )

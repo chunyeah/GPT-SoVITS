@@ -762,19 +762,55 @@ class Text2SemanticDecoder(nn.Module):
         repetition_penalty: float = 1.35,
         **kwargs
         ):
+        audio_consistency = kwargs.get("audio_consistency", False)
+        prompt_len = kwargs.get("prompt_len", 0)
+        # previous_cache = {
+        #     "phone":None,
+        #     "bert_features":None,
+        #     "token":None,
+        # }
+        previous_phone = None
+        previous_bert_features = None
+        previous_token = None
+
         y_list = []
         idx_list = []
         for i in range(len(x)):
-            y, idx = self.infer_panel_naive(x[i].unsqueeze(0), 
-                                                  x_lens[i], 
-                                                  prompts[i].unsqueeze(0) if prompts is not None else None, 
-                                                  bert_feature[i].unsqueeze(0), 
-                                                  top_k, 
-                                                  top_p, 
-                                                  early_stop_num, 
-                                                  temperature,
-                                                  repetition_penalty,
-                                                  **kwargs)
+            all_phone = x[i].unsqueeze(0)
+            all_bert_feature_i = bert_feature[i].unsqueeze(0)
+            x_len = x_lens[i]
+            prompt_token = prompts[i].unsqueeze(0) if prompts is not None else None
+        
+            if audio_consistency:
+                if (prompt_token is not None) and (previous_token is not None):
+                    all_phone = torch.cat([all_phone[:,:prompt_len], previous_phone, all_phone[:,prompt_len:]], dim=-1)
+                    all_bert_feature_i = torch.cat([all_bert_feature_i[:, :, :prompt_len], previous_bert_features, all_bert_feature_i[:, :, prompt_len:]], dim=-1)
+                    
+                    x_len = all_phone.shape[1]
+                    prompt_token = torch.cat([prompt_token, previous_token], dim=-1)
+
+                elif (prompt_token is None) and (previous_token is not None):
+                    all_phone = torch.cat([previous_phone, all_phone], dim=-1)
+                    all_bert_feature_i = torch.cat([previous_bert_features, all_bert_feature_i], dim=-1)
+
+                    x_len = all_phone.shape[1]
+                    prompt_token = previous_token
+
+                previous_phone = x[i].unsqueeze(0)[:, prompt_len:]
+                previous_bert_features = bert_feature[i].unsqueeze(0)[:, :, prompt_len:]
+
+            y, idx = self.infer_panel_naive(all_phone, 
+                                            x_len, 
+                                            prompt_token, 
+                                            all_bert_feature_i, 
+                                            top_k, 
+                                            top_p, 
+                                            early_stop_num, 
+                                            temperature,
+                                            repetition_penalty,
+                                            **kwargs)
+            if audio_consistency:
+                previous_token = y[0][-idx:].unsqueeze(0) 
             y_list.append(y[0])
             idx_list.append(idx)
         

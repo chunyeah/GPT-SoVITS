@@ -413,7 +413,10 @@ class TTS:
 
     def _set_ref_spec(self, ref_audio_path):
         spec = self._get_ref_spec(ref_audio_path)
-        self.prompt_cache["refer_spec"].append(spec)
+        if self.prompt_cache["refer_spec"] in [[],None]:
+            self.prompt_cache["refer_spec"]=[spec]
+        else:
+            self.prompt_cache["refer_spec"][0] = spec
 
     def _get_ref_spec(self, ref_audio_path):
         audio = load_audio(ref_audio_path, int(self.configs.sampling_rate))
@@ -532,7 +535,7 @@ class TTS:
             item_list = [data[idx] for idx in index_list]
             phones_list = []
             phones_len_list = []
-            # bert_features_list = []
+            bert_features_list = []
             all_phones_list = []
             all_phones_len_list = []
             all_bert_features_list = []
@@ -545,12 +548,14 @@ class TTS:
                                                 .to(dtype=precision, device=device)
                     all_phones = torch.LongTensor(prompt_data["phones"]+item["phones"]).to(device)
                     phones = torch.LongTensor(item["phones"]).to(device)
+                    bert_features = item["bert_features"].to(dtype=precision, device=device)
                     # norm_text = prompt_data["norm_text"]+item["norm_text"]
                 else:
-                    all_bert_features = item["bert_features"]\
-                                            .to(dtype=precision, device=device)
+
                     phones = torch.LongTensor(item["phones"]).to(device)
+                    bert_features = item["bert_features"].to(dtype=precision, device=device)
                     all_phones = phones
+                    all_bert_features = bert_features
                     # norm_text = item["norm_text"]
 
                 all_bert_max_len = max(all_bert_max_len, all_bert_features.shape[-1])
@@ -558,12 +563,14 @@ class TTS:
                 
                 phones_list.append(phones)
                 phones_len_list.append(phones.shape[-1])
+                bert_features_list.append(bert_features)
                 all_phones_list.append(all_phones)
                 all_phones_len_list.append(all_phones.shape[-1])
                 all_bert_features_list.append(all_bert_features)
                 norm_text_batch.append(item["norm_text"])
                 
             phones_batch = phones_list
+            bert_features_batch = bert_features_list
             all_phones_batch = all_phones_list
             all_bert_features_batch = all_bert_features_list
             
@@ -589,6 +596,7 @@ class TTS:
             batch = {
                 "phones": phones_batch,
                 "phones_len": torch.LongTensor(phones_len_list).to(device),
+                "bert_features": bert_features_batch,
                 "all_phones": all_phones_batch,
                 "all_phones_len": torch.LongTensor(all_phones_len_list).to(device),
                 "all_bert_features": all_bert_features_batch,
@@ -650,6 +658,7 @@ class TTS:
                     "seed": -1,                   # int. random seed for reproducibility.
                     "parallel_infer": True,       # bool. whether to use parallel inference.
                     "repetition_penalty": 1.35    # float. repetition penalty for T2S model.
+                    "audio_consistency: False,    # bool. To contorl the audio fragment consistency.
                 }
         returns:
             Tuple[int, np.ndarray]: sampling rate and audio data.
@@ -677,6 +686,12 @@ class TTS:
         actual_seed = set_seed(seed)
         parallel_infer = inputs.get("parallel_infer", True)
         repetition_penalty = inputs.get("repetition_penalty", 1.35)
+        audio_consistency = inputs.get("audio_consistency", False)
+
+        if audio_consistency:
+            print(i18n("音频一致性模式已开启，已自动关闭并行推理模式和分桶处理模式"))
+            parallel_infer = False
+            split_bucket = False
 
         if parallel_infer:
             print(i18n("并行推理模式已开启"))
@@ -714,6 +729,8 @@ class TTS:
         if ref_audio_path in [None, ""] and \
             ((self.prompt_cache["prompt_semantic"] is None) or (self.prompt_cache["refer_spec"] in [None, []])):
             raise ValueError("ref_audio_path cannot be empty, when the reference audio is not set using set_ref_audio()")
+
+
 
         ###### setting reference audio and prompt text preprocessing ########
         t0 = ttime()
@@ -831,11 +848,10 @@ class TTS:
                 max_len = item["max_len"]
 
                 print(i18n("前端处理后的文本(每句):"), norm_text)
-                if no_prompt_text :
+                if no_prompt_text:
                     prompt = None
                 else:
                     prompt = self.prompt_cache["prompt_semantic"].expand(len(all_phoneme_ids), -1).to(self.configs.device)
-
 
                 pred_semantic_list, idx_list = self.t2s_model.model.infer_panel(
                     all_phoneme_ids,
@@ -849,6 +865,8 @@ class TTS:
                     early_stop_num=self.configs.hz * self.configs.max_sec,
                     max_len=max_len,
                     repetition_penalty=repetition_penalty,
+                    audio_consistency=audio_consistency,
+                    prompt_len=len(self.prompt_cache["phones"])if not no_prompt_text else 0,
                 )
                 t4 = ttime()
                 t_34 += t4 - t3
