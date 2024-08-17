@@ -714,9 +714,9 @@ class TTS:
         else:
             print(i18n("分桶处理模式已关闭"))
 
-        if fragment_interval<0.01:
-            fragment_interval = 0.01
-            print(i18n("分段间隔过小，已自动设置为0.01"))
+        # if fragment_interval<0.01:
+        #     fragment_interval = 0.01
+        #     print(i18n("分段间隔过小，已自动设置为0.01"))
 
         no_prompt_text = False
         if prompt_text in [None, ""]:
@@ -981,17 +981,20 @@ class TTS:
                           split_bucket:bool=True,
                           fragment_interval:float=0.3
                           )->Tuple[int, np.ndarray]:
-        zero_wav = torch.zeros(
-                        int(self.configs.sampling_rate * fragment_interval),
-                        dtype=self.precision,
-                        device=self.configs.device
-                    )
+        if fragment_interval==0:
+            zero_wav = None
+        else:
+            zero_wav = torch.zeros(
+                            int(self.configs.sampling_rate * fragment_interval),
+                            dtype=self.precision,
+                            device=self.configs.device
+                        )
         
         for i, batch in enumerate(audio):
             for j, audio_fragment in enumerate(batch):
                 max_audio=torch.abs(audio_fragment).max()#简单防止16bit爆音
                 if max_audio>1: audio_fragment/=max_audio
-                audio_fragment:torch.Tensor = torch.cat([audio_fragment, zero_wav], dim=0)
+                audio_fragment:torch.Tensor = torch.cat([audio_fragment, zero_wav], dim=0) if zero_wav is not None else audio_fragment
                 audio[i][j] = audio_fragment.cpu().numpy()
             
         

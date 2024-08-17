@@ -254,7 +254,7 @@ with gr.Blocks(title="GPT-SoVITS WebUI") as app:
 
             with gr.Column():
                 batch_size = gr.Slider(minimum=1,maximum=200,step=1,label=i18n("batch_size"),value=20,interactive=True)
-                fragment_interval = gr.Slider(minimum=0.01,maximum=1,step=0.01,label=i18n("分段间隔(秒)"),value=0.3,interactive=True)
+                fragment_interval = gr.Slider(minimum=0,maximum=1,step=0.01,label=i18n("分段间隔(秒)"),value=0.3,interactive=True)
                 speed_factor = gr.Slider(minimum=0.6,maximum=1.65,step=0.05,label="speed_factor",value=1.0,interactive=True)
                 top_k = gr.Slider(minimum=1,maximum=100,step=1,label=i18n("top_k"),value=5,interactive=True)
                 top_p = gr.Slider(minimum=0,maximum=1,step=0.05,label=i18n("top_p"),value=1,interactive=True)
