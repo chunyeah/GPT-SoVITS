@@ -478,7 +478,7 @@ audio_data: Dict[str, Dict[str, str]] = {}
 
 def load_csv_data(file_path: str) -> None:
     global audio_data
-    with open(file_path, 'r', encoding='utf-8') as file:
+    with open(file_path, 'r', encoding='utf-8-sig') as file:
         csv_reader = csv.DictReader(file)
         for row in csv_reader:
             audio_data[row['prompt_audio_id']] = row
