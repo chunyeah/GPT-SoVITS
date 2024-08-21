@@ -229,7 +229,7 @@ with gr.Blocks(title="GPT-SoVITS WebUI") as app:
             gr.Markdown(value=i18n("*请上传并填写参考信息"))
             with gr.Row():
                 inp_ref = gr.Audio(label=i18n("主参考音频(请上传3~10秒内参考音频，超过会报错！)"), type="filepath")
-                inp_refs = gr.File(label=i18n("辅参考音频(可选多个，或不选)"),file_count="multiple", type="file")
+                inp_refs = gr.File(label=i18n("辅参考音频(可选多个，或不选)"),file_count="multiple")
             prompt_text = gr.Textbox(label=i18n("主参考音频的文本"), value="", lines=2)
             with gr.Row():
                 prompt_language = gr.Dropdown(
@@ -322,7 +322,7 @@ with gr.Blocks(title="GPT-SoVITS WebUI") as app:
         gr.Markdown(value=i18n("后续将支持转音素、手工修改音素、语音合成分步执行。"))
 
 if __name__ == '__main__':
-    app.queue(concurrency_count=511, max_size=1022).launch(
+    app.queue().launch(
         server_name="0.0.0.0",
         inbrowser=True,
         share=is_share,

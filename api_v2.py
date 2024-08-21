@@ -250,7 +250,6 @@ def handle_control(command:str):
 
 
 def check_params(req:dict):
-
     prompt_audio_id = req.get("prompt_audio_id", "")
     if prompt_audio_id in [None, ""]:
         return JSONResponse(status_code=400, content={"message": "prompt_audio_id is required"})
@@ -262,7 +261,6 @@ def check_params(req:dict):
     req["ref_audio_path"] = f"Docker/audio_samples/{prompt_audio}"
     req["prompt_lang"] = prompt_lang
     req["prompt_text"] = prompt_text
-
 
     text:str = req.get("text", "")
     text_lang:str = req.get("text_lang", "")
