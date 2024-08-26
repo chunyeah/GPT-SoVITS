@@ -122,6 +122,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import csv
 from typing import Dict, List
+import hashlib
+import requests
 
 # print(sys.path)
 i18n = I18nAuto()
@@ -168,6 +170,9 @@ class TTS_Request(BaseModel):
     parallel_infer:bool = True
     repetition_penalty:float = 1.35
     prompt_audio_id: str = None
+    prompt_audio_url: str = None
+    prompt_audio_lang: str = None
+    prompt_audio_text: str = ""
 
 ### modify from https://github.com/RVC-Boss/GPT-SoVITS/pull/894/files
 def pack_ogg(io_buffer:BytesIO, data:np.ndarray, rate:int):
@@ -247,17 +252,35 @@ def handle_control(command:str):
         os.kill(os.getpid(), signal.SIGTERM)
         exit(0)
 
+def check_prompt_audio_url(url):
+    md5_hash = hashlib.md5(url.encode()).hexdigest()
+    local_dir = "Docker/audio"
+    os.makedirs(local_dir, exist_ok=True)
+    file_path = os.path.join(local_dir, f"{md5_hash}.mp3")
+    if os.path.exists(file_path):
+        return file_path
+    # 如果文件不存在,下载并保存
+    try:
+        # 下载文件
+        response = requests.get(url)
+        response.raise_for_status()  # 如果请求失败,将引发异常
+        # 保存文件
+        with open(file_path, 'wb') as f:
+            f.write(response.content)
+        return file_path
+    except Exception as e:
+        print(f"下载或保存文件时发生错误: {e}")
+        return None
+
 
 def check_params(req:dict):
-    prompt_audio_id = req.get("prompt_audio_id", "")
-    if prompt_audio_id in [None, ""]:
-        return JSONResponse(status_code=400, content={"message": "prompt_audio_id is required"})
-    prompt_audio_info_dic = get_audio_info(prompt_audio_id=prompt_audio_id)
-    prompt_audio:str = prompt_audio_info_dic.get("prompt_audio", "")
-    prompt_lang:str = prompt_audio_info_dic.get("prompt_lang", "")
-    prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
+    prompt_audio_url:str = req.get("prompt_audio_url", "")
+    if prompt_audio_url in [None, ""]:
+        return JSONResponse(status_code=400, content={"message": "prompt_audio_url is required"})
+    prompt_lang:str = req.get("prompt_audio_lang", "")
+    prompt_text:str = req.get("prompt_audio_text", "")
 
-    req["ref_audio_path"] = f"Docker/audio_samples/{prompt_audio}"
+    req["ref_audio_path"] = check_prompt_audio_url(url=prompt_audio_url)
     req["prompt_lang"] = prompt_lang
     req["prompt_text"] = prompt_text
 
@@ -389,7 +412,10 @@ async def tts_get_endpoint(
                         streaming_mode:bool = False,
                         parallel_infer:bool = True,
                         repetition_penalty:float = 1.35,
-                        prompt_audio_id: str = ""
+                        prompt_audio_id: str = "",
+                        prompt_audio_url: str = "",
+                        prompt_audio_lang: str = "",
+                        prompt_audio_text: str = ""
                         ):
     req = {
         "text": text,
@@ -412,7 +438,10 @@ async def tts_get_endpoint(
         "streaming_mode":streaming_mode,
         "parallel_infer":parallel_infer,
         "repetition_penalty":float(repetition_penalty),
-        "prompt_audio_id": prompt_audio_id
+        "prompt_audio_id": prompt_audio_id,
+        "prompt_audio_url": prompt_audio_url,
+        "prompt_audio_lang": prompt_audio_lang,
+        "prompt_audio_text": prompt_audio_text
     }
     return await tts_handle(req)
                 
@@ -472,22 +501,8 @@ async def set_sovits_weights(weights_path: str = None):
         return JSONResponse(status_code=400, content={"message": f"change sovits weight failed", "Exception": str(e)})
     return JSONResponse(status_code=200, content={"message": "success"})
 
-audio_data: Dict[str, Dict[str, str]] = {}
-
-def load_csv_data(file_path: str) -> None:
-    global audio_data
-    with open(file_path, 'r', encoding='utf-8-sig') as file:
-        csv_reader = csv.DictReader(file)
-        for row in csv_reader:
-            audio_data[row['prompt_audio_id']] = row
-
-def get_audio_info(prompt_audio_id: str) -> Dict[str, str]:
-    return audio_data.get(prompt_audio_id, {})
-
 if __name__ == "__main__":
     try:
-        load_csv_data('Docker/audio_sample.csv')
-        print(f"audio_sample.csv: {audio_data}")
         uvicorn.run(app=APP, host=host, port=port, workers=1)
     except Exception as e:
         traceback.print_exc()
