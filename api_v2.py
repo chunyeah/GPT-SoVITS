@@ -145,8 +145,6 @@ tts_config = TTS_Config(config_path)
 print(tts_config)
 tts_pipeline = TTS(tts_config)
 
-last_gpt_weights = ""
-
 APP = FastAPI()
 class TTS_Request(BaseModel):
     text: str = None
@@ -260,6 +258,8 @@ def check_params(req:dict):
     prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
     gpt_weights:str = prompt_audio_info_dic.get("gpt", "")
     sovits_weights:str = prompt_audio_info_dic.get("sovits", "")
+
+    global last_gpt_weights
     if gpt_weights not in [None, ""] and sovits_weights not in [None, ""]:
         if last_gpt_weights != gpt_weights:
             sovits_weights_path = f"SoVITS_weights_v2/{sovits_weights}"
@@ -471,7 +471,7 @@ async def set_sovits_weights(weights_path: str = None):
     return JSONResponse(status_code=200, content={"message": "success"})
 
 audio_data: Dict[str, Dict[str, str]] = {}
-
+last_gpt_weights: str = ''
 def load_csv_data(file_path: str) -> None:
     global audio_data
     with open(file_path, 'r', encoding='utf-8-sig') as file:
