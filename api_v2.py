@@ -274,13 +274,44 @@ def check_prompt_audio_url(url):
 
 
 def check_params(req:dict):
-    prompt_audio_url:str = req.get("prompt_audio_url", "")
-    if prompt_audio_url in [None, ""]:
-        return JSONResponse(status_code=400, content={"message": "prompt_audio_url is required"})
-    prompt_lang:str = req.get("prompt_audio_lang", "")
-    prompt_text:str = req.get("prompt_audio_text", "")
+    prompt_audio_id = req.get("prompt_audio_id", "")
+    if prompt_audio_id in [None, ""]:
+        return JSONResponse(status_code=400, content={"message": "prompt_audio_id is required"})
+    prompt_audio_info_dic = get_audio_info(prompt_audio_id=prompt_audio_id)
+    if prompt_audio_info_dic is not None:
+        prompt_audio:str = prompt_audio_info_dic.get("prompt_audio", "")
+        prompt_lang:str = prompt_audio_info_dic.get("prompt_lang", "")
+        prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
+        gpt_weights:str = prompt_audio_info_dic.get("gpt", "")
+        sovits_weights:str = prompt_audio_info_dic.get("sovits", "")
 
-    req["ref_audio_path"] = check_prompt_audio_url(url=prompt_audio_url)
+        req["ref_audio_path"] = f"Docker/audio_samples/{prompt_audio}"
+    else:
+        prompt_audio_url:str = req.get("prompt_audio_url", "")
+        if prompt_audio_url in [None, ""]:
+            return JSONResponse(status_code=400, content={"message": "prompt_audio_url is required"})
+        prompt_lang:str = req.get("prompt_audio_lang", "")
+        prompt_text:str = req.get("prompt_audio_text", "")
+        gpt_weights = ""
+        sovits_weights = ""
+
+        req["ref_audio_path"] = check_prompt_audio_url(url=prompt_audio_url)
+
+
+    global last_gpt_weights
+    if gpt_weights not in [None, ""] and sovits_weights not in [None, ""]:
+        if last_gpt_weights != gpt_weights:
+            sovits_weights_path = f"SoVITS_weights_v2/{sovits_weights}"
+            gpt_weights_path = f"GPT_weights_v2/{gpt_weights}"
+            tts_pipeline.init_vits_weights(weights_path=sovits_weights_path)
+            tts_pipeline.init_t2s_weights(weights_path=gpt_weights_path)
+            last_gpt_weights = gpt_weights
+    else:
+        if last_gpt_weights != "": 
+            tts_pipeline.init_vits_weights(weights_path="GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth")
+            tts_pipeline.init_t2s_weights(weights_path="GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt")
+            last_gpt_weights = ""
+
     req["prompt_lang"] = prompt_lang
     req["prompt_text"] = prompt_text
 
@@ -461,24 +492,6 @@ async def set_refer_aduio(refer_audio_path: str = None):
     return JSONResponse(status_code=200, content={"message": "success"})
 
 
-# @APP.post("/set_refer_audio")
-# async def set_refer_aduio_post(audio_file: UploadFile = File(...)):
-#     try:
-#         # 检查文件类型，确保是音频文件
-#         if not audio_file.content_type.startswith("audio/"):
-#             return JSONResponse(status_code=400, content={"message": "file type is not supported"})
-        
-#         os.makedirs("uploaded_audio", exist_ok=True)
-#         save_path = os.path.join("uploaded_audio", audio_file.filename)
-#         # 保存音频文件到服务器上的一个目录
-#         with open(save_path , "wb") as buffer:
-#             buffer.write(await audio_file.read())
-            
-#         tts_pipeline.set_ref_audio(save_path)
-#     except Exception as e:
-#         return JSONResponse(status_code=400, content={"message": f"set refer audio failed", "Exception": str(e)})
-#     return JSONResponse(status_code=200, content={"message": "success"})
-
 @APP.get("/set_gpt_weights")
 async def set_gpt_weights(weights_path: str = None):
     try:
@@ -501,8 +514,22 @@ async def set_sovits_weights(weights_path: str = None):
         return JSONResponse(status_code=400, content={"message": f"change sovits weight failed", "Exception": str(e)})
     return JSONResponse(status_code=200, content={"message": "success"})
 
+audio_data: Dict[str, Dict[str, str]] = {}
+last_gpt_weights: str = ''
+def load_csv_data(file_path: str) -> None:
+    global audio_data
+    with open(file_path, 'r', encoding='utf-8-sig') as file:
+        csv_reader = csv.DictReader(file)
+        for row in csv_reader:
+            audio_data[row['prompt_audio_id']] = row
+
+def get_audio_info(prompt_audio_id: str) -> Dict[str, str]:
+    return audio_data.get(prompt_audio_id, {})
+
 if __name__ == "__main__":
     try:
+        load_csv_data('Docker/audio_sample.csv')
+        print(f"audio_sample.csv: {audio_data}")
         uvicorn.run(app=APP, host=host, port=port, workers=1)
     except Exception as e:
         traceback.print_exc()
