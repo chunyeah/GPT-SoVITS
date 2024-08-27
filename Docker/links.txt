@@ -1,4 +1,10 @@
 # GPT-SoVITS models
+https://huggingface.co/lj1995/GPT-SoVITS/resolve/main/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step%3D369668.ckpt
+  out=GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt
+https://huggingface.co/lj1995/GPT-SoVITS/resolve/main/gsv-v2final-pretrained/s2G2333k.pth
+  out=GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth
+https://huggingface.co/lj1995/GPT-SoVITS/resolve/main/gsv-v2final-pretrained/s2D2333k.pth
+  out=GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2D2333k.pth
 https://huggingface.co/lj1995/GPT-SoVITS/resolve/main/s1bert25hz-2kh-longer-epoch%3D68e-step%3D50232.ckpt
   out=GPT_SoVITS/pretrained_models/s1bert25hz-2kh-longer-epoch=68e-step=50232.ckpt
 https://huggingface.co/lj1995/GPT-SoVITS/resolve/main/s2D488k.pth

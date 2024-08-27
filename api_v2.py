@@ -145,6 +145,8 @@ tts_config = TTS_Config(config_path)
 print(tts_config)
 tts_pipeline = TTS(tts_config)
 
+last_gpt_weights = ""
+
 APP = FastAPI()
 class TTS_Request(BaseModel):
     text: str = None
@@ -256,6 +258,20 @@ def check_params(req:dict):
     prompt_audio:str = prompt_audio_info_dic.get("prompt_audio", "")
     prompt_lang:str = prompt_audio_info_dic.get("prompt_lang", "")
     prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
+    gpt_weights:str = prompt_audio_info_dic.get("gpt", "")
+    sovits_weights:str = prompt_audio_info_dic.get("sovits", "")
+    if gpt_weights not in [None, ""] and sovits_weights not in [None, ""]:
+        if last_gpt_weights != gpt_weights:
+            sovits_weights_path = f"SoVITS_weights_v2/{sovits_weights}"
+            gpt_weights_path = f"GPT_weights_v2/{gpt_weights}"
+            tts_pipeline.init_vits_weights(weights_path=sovits_weights_path)
+            tts_pipeline.init_t2s_weights(weights_path=gpt_weights_path)
+            last_gpt_weights = gpt_weights
+    else:
+        if last_gpt_weights != "": 
+            tts_pipeline.init_vits_weights(weights_path="GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth")
+            tts_pipeline.init_t2s_weights(weights_path="GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt")
+            last_gpt_weights = ""
 
     req["ref_audio_path"] = f"Docker/audio_samples/{prompt_audio}"
     req["prompt_lang"] = prompt_lang
@@ -431,24 +447,6 @@ async def set_refer_aduio(refer_audio_path: str = None):
         return JSONResponse(status_code=400, content={"message": f"set refer audio failed", "Exception": str(e)})
     return JSONResponse(status_code=200, content={"message": "success"})
 
-
-# @APP.post("/set_refer_audio")
-# async def set_refer_aduio_post(audio_file: UploadFile = File(...)):
-#     try:
-#         # 检查文件类型，确保是音频文件
-#         if not audio_file.content_type.startswith("audio/"):
-#             return JSONResponse(status_code=400, content={"message": "file type is not supported"})
-        
-#         os.makedirs("uploaded_audio", exist_ok=True)
-#         save_path = os.path.join("uploaded_audio", audio_file.filename)
-#         # 保存音频文件到服务器上的一个目录
-#         with open(save_path , "wb") as buffer:
-#             buffer.write(await audio_file.read())
-            
-#         tts_pipeline.set_ref_audio(save_path)
-#     except Exception as e:
-#         return JSONResponse(status_code=400, content={"message": f"set refer audio failed", "Exception": str(e)})
-#     return JSONResponse(status_code=200, content={"message": "success"})
 
 @APP.get("/set_gpt_weights")
 async def set_gpt_weights(weights_path: str = None):
