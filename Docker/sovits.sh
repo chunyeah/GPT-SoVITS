@@ -22,3 +22,5 @@ wget https://uproai.blob.core.windows.net/models/苍森美弥/苍森美弥_e10_s
 wget https://uproai.blob.core.windows.net/models/阿慈谷日富美/阿慈谷日富美_e10_s150.pth
 wget https://uproai.blob.core.windows.net/models/阿露/阿露_e10_s280.pth
 wget https://uproai.blob.core.windows.net/models/鬼方佳代子/鬼方佳代子_e10_s160.pth
+wget https://uproai.blob.core.windows.net/models/近卫南/近卫南_e10_s170.pth
+wget https://uproai.blob.core.windows.net/models/静山真白/静山真白_e10_s130.pth
