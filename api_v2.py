@@ -276,17 +276,6 @@ def check_prompt_audio_url(url):
 def check_params(req:dict):
     prompt_audio_id = req.get("prompt_audio_id", "")
     if prompt_audio_id in [None, ""]:
-        return JSONResponse(status_code=400, content={"message": "prompt_audio_id is required"})
-    prompt_audio_info_dic = get_audio_info(prompt_audio_id=prompt_audio_id)
-    if prompt_audio_info_dic is not None:
-        prompt_audio:str = prompt_audio_info_dic.get("prompt_audio", "")
-        prompt_lang:str = prompt_audio_info_dic.get("prompt_lang", "")
-        prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
-        gpt_weights:str = prompt_audio_info_dic.get("gpt", "")
-        sovits_weights:str = prompt_audio_info_dic.get("sovits", "")
-
-        req["ref_audio_path"] = f"Docker/audio_samples/{prompt_audio}"
-    else:
         prompt_audio_url:str = req.get("prompt_audio_url", "")
         if prompt_audio_url in [None, ""]:
             return JSONResponse(status_code=400, content={"message": "prompt_audio_url is required"})
@@ -296,7 +285,26 @@ def check_params(req:dict):
         sovits_weights = ""
 
         req["ref_audio_path"] = check_prompt_audio_url(url=prompt_audio_url)
+    else:
+        prompt_audio_info_dic = get_audio_info(prompt_audio_id=prompt_audio_id)
+        if prompt_audio_info_dic is not None:
+            prompt_audio:str = prompt_audio_info_dic.get("prompt_audio", "")
+            prompt_lang:str = prompt_audio_info_dic.get("prompt_lang", "")
+            prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
+            gpt_weights:str = prompt_audio_info_dic.get("gpt", "")
+            sovits_weights:str = prompt_audio_info_dic.get("sovits", "")
 
+            req["ref_audio_path"] = f"Docker/audio_samples/{prompt_audio}"
+        else:
+            prompt_audio_url:str = req.get("prompt_audio_url", "")
+            if prompt_audio_url in [None, ""]:
+                return JSONResponse(status_code=400, content={"message": "prompt_audio_url is required"})
+            prompt_lang:str = req.get("prompt_audio_lang", "")
+            prompt_text:str = req.get("prompt_audio_text", "")
+            gpt_weights = ""
+            sovits_weights = ""
+    
+            req["ref_audio_path"] = check_prompt_audio_url(url=prompt_audio_url)
 
     global last_gpt_weights
     if gpt_weights not in [None, ""] and sovits_weights not in [None, ""]:
