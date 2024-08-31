@@ -344,8 +344,6 @@ def check_params(req:dict):
     elif prompt_lang.lower() not in tts_config.languages:
         return JSONResponse(status_code=400, content={"message": f"prompt_lang: {prompt_lang} is not supported in version {tts_config.version}"})
     if media_type not in ["wav", "raw", "ogg", "aac", "mp3"]:
-        return JSONResponse(status_code=400, content={"message": "media_type is not supported"})
-    if media_type not in ["wav", "raw", "ogg", "aac"]:
         return JSONResponse(status_code=400, content={"message": f"media_type: {media_type} is not supported"})
     elif media_type == "ogg" and  not streaming_mode:
         return JSONResponse(status_code=400, content={"message": "ogg format is not supported in non-streaming mode"})
