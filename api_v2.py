@@ -121,7 +121,7 @@ from GPT_SoVITS.TTS_infer_pack.text_segmentation_method import get_method_names 
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import csv
-from typing import Dict, List
+from typing import Dict, List, Optional
 import hashlib
 import requests
 
@@ -170,9 +170,9 @@ class TTS_Request(BaseModel):
     parallel_infer:bool = True
     repetition_penalty:float = 1.35
     prompt_audio_id: str = None
-    prompt_audio_url: str = None
-    prompt_audio_lang: str = None
-    prompt_audio_text: str = ""
+    prompt_audio_url: Optional[str] = ""
+    prompt_audio_lang: Optional[str] = ""
+    prompt_audio_text: Optional[str] = ""
 
 ### modify from https://github.com/RVC-Boss/GPT-SoVITS/pull/894/files
 def pack_ogg(io_buffer:BytesIO, data:np.ndarray, rate:int):
