@@ -287,7 +287,7 @@ def check_params(req:dict):
         req["ref_audio_path"] = check_prompt_audio_url(url=prompt_audio_url)
     else:
         prompt_audio_info_dic = get_audio_info(prompt_audio_id=prompt_audio_id)
-        if prompt_audio_info_dic is not None:
+        if prompt_audio_info_dic and prompt_audio_info_dic != {}:
             prompt_audio:str = prompt_audio_info_dic.get("prompt_audio", "")
             prompt_lang:str = prompt_audio_info_dic.get("prompt_lang", "")
             prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
