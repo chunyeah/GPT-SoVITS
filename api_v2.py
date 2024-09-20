@@ -256,7 +256,7 @@ def check_prompt_audio_url(url):
     md5_hash = hashlib.md5(url.encode()).hexdigest()
     local_dir = "Docker/audio"
     os.makedirs(local_dir, exist_ok=True)
-    file_path = os.path.join(local_dir, f"{md5_hash}.mp3")
+    file_path = os.path.join(local_dir, f"{md5_hash}.wav")
     if os.path.exists(file_path):
         return file_path
     # 如果文件不存在,下载并保存
