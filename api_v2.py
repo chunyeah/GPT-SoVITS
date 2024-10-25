@@ -274,16 +274,8 @@ def check_prompt_audio_url(url):
 
 
 def check_params(req:dict):
-    prompt_audio_info_dic = get_audio_info(prompt_audio_id=prompt_audio_id)
-    if prompt_audio_info_dic and prompt_audio_info_dic != {}:
-        prompt_audio:str = prompt_audio_info_dic.get("prompt_audio", "")
-        prompt_lang:str = prompt_audio_info_dic.get("prompt_lang", "")
-        prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
-        gpt_weights:str = prompt_audio_info_dic.get("gpt", "")
-        sovits_weights:str = prompt_audio_info_dic.get("sovits", "")
-
-        req["ref_audio_path"] = f"Docker/audio_samples/{prompt_audio}"
-    else:
+    prompt_audio_id = req.get("prompt_audio_id", "")
+    if prompt_audio_id in [None, ""]:
         prompt_audio_url:str = req.get("prompt_audio_url", "")
         if prompt_audio_url in [None, ""]:
             return JSONResponse(status_code=400, content={"message": "prompt_audio_url is required"})
@@ -293,6 +285,27 @@ def check_params(req:dict):
         sovits_weights = ""
 
         req["ref_audio_path"] = check_prompt_audio_url(url=prompt_audio_url)
+    else:
+        prompt_audio_info_dic = get_audio_info(prompt_audio_id=prompt_audio_id)
+        if prompt_audio_info_dic and prompt_audio_info_dic != {}:
+            prompt_audio:str = prompt_audio_info_dic.get("prompt_audio", "")
+            prompt_lang:str = prompt_audio_info_dic.get("prompt_lang", "")
+            prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
+            gpt_weights:str = prompt_audio_info_dic.get("gpt", "")
+            sovits_weights:str = prompt_audio_info_dic.get("sovits", "")
+
+            req["ref_audio_path"] = f"Docker/audio_samples/{prompt_audio}"
+        else:
+            prompt_audio_url:str = req.get("prompt_audio_url", "")
+            if prompt_audio_url in [None, ""]:
+                return JSONResponse(status_code=400, content={"message": "prompt_audio_url is required"})
+            prompt_lang:str = req.get("prompt_audio_lang", "")
+            prompt_text:str = req.get("prompt_audio_text", "")
+            gpt_weights = ""
+            sovits_weights = ""
+    
+            req["ref_audio_path"] = check_prompt_audio_url(url=prompt_audio_url)
+
 
     global last_gpt_weights
     if gpt_weights not in [None, ""] and sovits_weights not in [None, ""]:
@@ -521,10 +534,13 @@ def load_csv_data(file_path: str) -> None:
 def get_audio_info(prompt_audio_id: str) -> Dict[str, str]:
     return audio_data.get(prompt_audio_id, {})
 
+@app.on_event("startup")
+async def startup_event():
+    load_csv_data('Docker/audio_sample.csv')
+    print(f"audio_sample.csv loaded in worker: {audio_data}")
+
 if __name__ == "__main__":
     try:
-        load_csv_data('Docker/audio_sample.csv')
-        print(f"audio_sample.csv: {audio_data}")
         if host == 'None':   # 在调用时使用 -a None 参数，可以让api监听双栈
             host = None
         uvicorn.run(app="api_v2:app", host=host, port=port, workers=4)
