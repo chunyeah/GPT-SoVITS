@@ -537,6 +537,8 @@ if __name__ == "__main__":
     try:
         load_csv_data('Docker/audio_sample.csv')
         print(f"audio_sample.csv: {audio_data}")
+        if host == 'None':   # 在调用时使用 -a None 参数，可以让api监听双栈
+            host = None
         uvicorn.run(app=APP, host=host, port=port, workers=1)
     except Exception as e:
         traceback.print_exc()
