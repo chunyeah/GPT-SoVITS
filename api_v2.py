@@ -147,7 +147,7 @@ tts_config = TTS_Config(config_path)
 print(tts_config)
 tts_pipeline = TTS(tts_config)
 
-APP = FastAPI()
+app = FastAPI()
 class TTS_Request(BaseModel):
     text: str = None
     text_lang: str = None
@@ -274,8 +274,16 @@ def check_prompt_audio_url(url):
 
 
 def check_params(req:dict):
-    prompt_audio_id = req.get("prompt_audio_id", "")
-    if prompt_audio_id in [None, ""]:
+    prompt_audio_info_dic = get_audio_info(prompt_audio_id=prompt_audio_id)
+    if prompt_audio_info_dic and prompt_audio_info_dic != {}:
+        prompt_audio:str = prompt_audio_info_dic.get("prompt_audio", "")
+        prompt_lang:str = prompt_audio_info_dic.get("prompt_lang", "")
+        prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
+        gpt_weights:str = prompt_audio_info_dic.get("gpt", "")
+        sovits_weights:str = prompt_audio_info_dic.get("sovits", "")
+
+        req["ref_audio_path"] = f"Docker/audio_samples/{prompt_audio}"
+    else:
         prompt_audio_url:str = req.get("prompt_audio_url", "")
         if prompt_audio_url in [None, ""]:
             return JSONResponse(status_code=400, content={"message": "prompt_audio_url is required"})
@@ -285,26 +293,6 @@ def check_params(req:dict):
         sovits_weights = ""
 
         req["ref_audio_path"] = check_prompt_audio_url(url=prompt_audio_url)
-    else:
-        prompt_audio_info_dic = get_audio_info(prompt_audio_id=prompt_audio_id)
-        if prompt_audio_info_dic and prompt_audio_info_dic != {}:
-            prompt_audio:str = prompt_audio_info_dic.get("prompt_audio", "")
-            prompt_lang:str = prompt_audio_info_dic.get("prompt_lang", "")
-            prompt_text:str = prompt_audio_info_dic.get("prompt_text", "")
-            gpt_weights:str = prompt_audio_info_dic.get("gpt", "")
-            sovits_weights:str = prompt_audio_info_dic.get("sovits", "")
-
-            req["ref_audio_path"] = f"Docker/audio_samples/{prompt_audio}"
-        else:
-            prompt_audio_url:str = req.get("prompt_audio_url", "")
-            if prompt_audio_url in [None, ""]:
-                return JSONResponse(status_code=400, content={"message": "prompt_audio_url is required"})
-            prompt_lang:str = req.get("prompt_audio_lang", "")
-            prompt_text:str = req.get("prompt_audio_text", "")
-            gpt_weights = ""
-            sovits_weights = ""
-    
-            req["ref_audio_path"] = check_prompt_audio_url(url=prompt_audio_url)
 
     global last_gpt_weights
     if gpt_weights not in [None, ""] and sovits_weights not in [None, ""]:
@@ -420,7 +408,7 @@ async def tts_handle(req:dict):
 
 
 
-@APP.get("/control")
+@app.get("/control")
 async def control(command: str = None):
     if command is None:
         return JSONResponse(status_code=400, content={"message": "command is required"})
@@ -428,7 +416,7 @@ async def control(command: str = None):
 
 
 
-@APP.get("/tts")
+@app.get("/tts")
 async def tts_get_endpoint(
                         text: str = None,
                         text_lang: str = None,
@@ -484,13 +472,13 @@ async def tts_get_endpoint(
     return await tts_handle(req)
                 
 
-@APP.post("/tts")
+@app.post("/tts")
 async def tts_post_endpoint(request: TTS_Request):
     req = request.dict()
     return await tts_handle(req)
 
 
-@APP.get("/set_refer_audio")
+@app.get("/set_refer_audio")
 async def set_refer_aduio(refer_audio_path: str = None):
     try:
         tts_pipeline.set_ref_audio(refer_audio_path)
@@ -499,7 +487,7 @@ async def set_refer_aduio(refer_audio_path: str = None):
     return JSONResponse(status_code=200, content={"message": "success"})
 
 
-@APP.get("/set_gpt_weights")
+@app.get("/set_gpt_weights")
 async def set_gpt_weights(weights_path: str = None):
     try:
         if weights_path in ["", None]:
@@ -511,7 +499,7 @@ async def set_gpt_weights(weights_path: str = None):
     return JSONResponse(status_code=200, content={"message": "success"})
 
 
-@APP.get("/set_sovits_weights")
+@app.get("/set_sovits_weights")
 async def set_sovits_weights(weights_path: str = None):
     try:
         if weights_path in ["", None]:
@@ -539,7 +527,7 @@ if __name__ == "__main__":
         print(f"audio_sample.csv: {audio_data}")
         if host == 'None':   # 在调用时使用 -a None 参数，可以让api监听双栈
             host = None
-        uvicorn.run(app=APP, host=host, port=port, workers=1)
+        uvicorn.run(app="api_v2:app", host=host, port=port, workers=4)
     except Exception as e:
         traceback.print_exc()
         os.kill(os.getpid(), signal.SIGTERM)
